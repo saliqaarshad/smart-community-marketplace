@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const Product = require('../models/Product');
 const Service = require('../models/Service');
+const createNotification = require('../utils/createNotification');
 
 // @desc    Create a booking request
 // @route   POST /api/bookings
@@ -48,6 +49,14 @@ const createBooking = async (req, res) => {
       .populate('buyer', 'fullName profilePicture')
       .populate('seller', 'fullName profilePicture')
       .populate('listing');
+
+    await createNotification({
+      recipient: sellerId,
+      type: 'booking_request',
+      title: 'New Booking Request',
+      message: `${req.user.fullName} sent you a booking request for "${listing.title}"`,
+      relatedId: booking._id,
+    });
 
     res.status(201).json({ success: true, data: populatedBooking });
   } catch (error) {
@@ -141,6 +150,14 @@ const acceptBooking = async (req, res) => {
     booking.status = 'accepted';
     await booking.save();
 
+    await createNotification({
+      recipient: booking.buyer,
+      type: 'booking_accepted',
+      title: 'Booking Accepted',
+      message: `Your booking request has been accepted`,
+      relatedId: booking._id,
+    });
+
     res.status(200).json({ success: true, data: booking });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -169,6 +186,14 @@ const rejectBooking = async (req, res) => {
     booking.cancellationReason = req.body.reason || '';
     await booking.save();
 
+    await createNotification({
+      recipient: booking.buyer,
+      type: 'booking_rejected',
+      title: 'Booking Rejected',
+      message: `Your booking request was declined`,
+      relatedId: booking._id,
+    });
+
     res.status(200).json({ success: true, data: booking });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -195,6 +220,14 @@ const completeBooking = async (req, res) => {
 
     booking.status = 'completed';
     await booking.save();
+
+    await createNotification({
+      recipient: booking.buyer,
+      type: 'booking_completed',
+      title: 'Booking Completed',
+      message: `Your booking has been marked as completed. Don't forget to leave a review!`,
+      relatedId: booking._id,
+    });
 
     res.status(200).json({ success: true, data: booking });
   } catch (error) {
@@ -228,6 +261,17 @@ const cancelBooking = async (req, res) => {
     booking.cancelledBy = req.user._id;
     booking.cancellationReason = req.body.reason || '';
     await booking.save();
+
+    const notifyRecipient =
+      booking.buyer.toString() === req.user._id.toString() ? booking.seller : booking.buyer;
+
+    await createNotification({
+      recipient: notifyRecipient,
+      type: 'booking_cancelled',
+      title: 'Booking Cancelled',
+      message: `A booking was cancelled`,
+      relatedId: booking._id,
+    });
 
     res.status(200).json({ success: true, data: booking });
   } catch (error) {

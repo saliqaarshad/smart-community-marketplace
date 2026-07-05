@@ -2,11 +2,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const createNotification = require('../utils/createNotification');
 
 const onlineUsers = new Map(); // userId -> socketId
 
 const initializeSocket = (io) => {
-  // Authenticate socket connections using JWT
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -29,17 +29,14 @@ const initializeSocket = (io) => {
     onlineUsers.set(userId, socket.id);
     console.log(`User connected: ${socket.user.fullName} (${socket.id})`);
 
-    // Join a conversation room
     socket.on('joinConversation', (conversationId) => {
       socket.join(conversationId);
     });
 
-    // Leave a conversation room
     socket.on('leaveConversation', (conversationId) => {
       socket.leave(conversationId);
     });
 
-    // Send a message
     socket.on('sendMessage', async ({ conversationId, text, image }) => {
       try {
         const conversation = await Conversation.findById(conversationId);
@@ -66,14 +63,23 @@ const initializeSocket = (io) => {
           'fullName profilePicture'
         );
 
-        // Emit to everyone in the conversation room (including sender for confirmation)
         io.to(conversationId).emit('newMessage', populatedMessage);
+
+        const recipientId = conversation.participants.find((p) => p.toString() !== userId);
+        if (recipientId && !onlineUsers.has(recipientId.toString())) {
+          await createNotification({
+            recipient: recipientId,
+            type: 'new_message',
+            title: 'New Message',
+            message: `${socket.user.fullName} sent you a message`,
+            relatedId: conversationId,
+          });
+        }
       } catch (error) {
         socket.emit('errorMessage', { message: error.message });
       }
     });
 
-    // Typing indicator
     socket.on('typing', ({ conversationId }) => {
       socket.to(conversationId).emit('userTyping', { userId, fullName: socket.user.fullName });
     });

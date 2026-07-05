@@ -3,6 +3,7 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Service = require('../models/Service');
+const createNotification = require('../utils/createNotification');
 
 // Helper: recalculate and update average rating for a User
 const updateUserRating = async (userId) => {
@@ -23,7 +24,6 @@ const updateListingRating = async (listingType, listingId) => {
   const totalReviews = reviews.length;
   const averageRating = totalReviews > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
 
-  // Product model doesn't have averageRating/totalReviews fields, only Service does
   if (listingType === 'Service') {
     await Model.findByIdAndUpdate(listingId, {
       averageRating: Math.round(averageRating * 10) / 10,
@@ -75,9 +75,16 @@ const createReview = async (req, res) => {
       comment: comment || '',
     });
 
-    // Update average ratings
     await updateUserRating(booking.seller);
     await updateListingRating(booking.listingType, booking.listing);
+
+    await createNotification({
+      recipient: booking.seller,
+      type: 'new_review',
+      title: 'New Review Received',
+      message: `${req.user.fullName} left you a ${rating}-star review`,
+      relatedId: review._id,
+    });
 
     const populatedReview = await Review.findById(review._id)
       .populate('reviewer', 'fullName profilePicture')
