@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { Send } from 'lucide-react';
+import { Send, Check, CheckCheck, Image as ImageIcon } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,40 @@ const timeAgo = (date) => {
   return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
+const formatTime = (date) =>
+  new Date(date).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+const formatDateLabel = (date) => {
+  const d = new Date(date);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const isSameDay = (a, b) => a.toDateString() === b.toDateString();
+
+  if (isSameDay(d, today)) return `Today, ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  if (isSameDay(d, yesterday)) return `Yesterday, ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const groupMessagesByDay = (messages) => {
+  const groups = [];
+  let currentDay = null;
+  let currentGroup = null;
+
+  messages.forEach((msg) => {
+    const day = new Date(msg.createdAt).toDateString();
+    if (day !== currentDay) {
+      currentDay = day;
+      currentGroup = { date: msg.createdAt, messages: [] };
+      groups.push(currentGroup);
+    }
+    currentGroup.messages.push(msg);
+  });
+
+  return groups;
+};
+
 const MessagesPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -27,8 +61,10 @@ const MessagesPage = () => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const activeConvoId = searchParams.get('conversation');
 
@@ -64,8 +100,12 @@ const MessagesPage = () => {
         if (message.conversation !== (activeConvo?._id || activeConvoId)) return prev;
         return [...prev, message];
       });
+      setIsOtherTyping(false);
       loadConversations();
     });
+
+    socketRef.current.on('userTyping', () => setIsOtherTyping(true));
+    socketRef.current.on('userStoppedTyping', () => setIsOtherTyping(false));
 
     return () => {
       socketRef.current?.disconnect();
@@ -74,6 +114,7 @@ const MessagesPage = () => {
 
   useEffect(() => {
     if (!activeConvo) return;
+    setIsOtherTyping(false);
 
     socketRef.current?.emit('joinConversation', activeConvo._id);
 
@@ -95,11 +136,23 @@ const MessagesPage = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isOtherTyping]);
 
   const selectConversation = (convo) => {
     setActiveConvo(convo);
     setSearchParams({ conversation: convo._id });
+  };
+
+  const handleTextChange = (e) => {
+    setText(e.target.value);
+    if (!activeConvo) return;
+
+    socketRef.current?.emit('typing', { conversationId: activeConvo._id });
+
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef.current?.emit('stopTyping', { conversationId: activeConvo._id });
+    }, 1500);
   };
 
   const handleSend = (e) => {
@@ -110,6 +163,7 @@ const MessagesPage = () => {
       conversationId: activeConvo._id,
       text: text.trim(),
     });
+    socketRef.current?.emit('stopTyping', { conversationId: activeConvo._id });
     setText('');
   };
 
@@ -117,6 +171,13 @@ const MessagesPage = () => {
     convo.participants.find((p) => p._id !== user._id) || convo.participants[0];
 
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  const messageGroups = groupMessagesByDay(messages);
+  const otherParticipant = activeConvo ? getOtherParticipant(activeConvo) : null;
+  const listingLink = activeConvo?.listingType && activeConvo?.listing
+    ? activeConvo.listingType === 'Product'
+      ? `/products/${activeConvo.listing._id}`
+      : `/services/${activeConvo.listing._id}`
+    : null;
 
   return (
     <div className="h-screen flex flex-col bg-bg">
@@ -149,12 +210,14 @@ const MessagesPage = () => {
                     activeConvo?._id === convo._id ? 'bg-primary-soft' : ''
                   }`}
                 >
-                  <div className="w-11 h-11 rounded-full bg-primary-soft text-primary flex items-center justify-center font-semibold overflow-hidden shrink-0">
-                    {other?.profilePicture ? (
-                      <img src={other.profilePicture} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      other?.fullName?.charAt(0).toUpperCase()
-                    )}
+                  <div className="relative shrink-0">
+                    <div className="w-11 h-11 rounded-full bg-primary-soft text-primary flex items-center justify-center font-semibold overflow-hidden">
+                      {other?.profilePicture ? (
+                        <img src={other.profilePicture} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        other?.fullName?.charAt(0).toUpperCase()
+                      )}
+                    </div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
@@ -188,40 +251,106 @@ const MessagesPage = () => {
             <>
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-white">
                 <button onClick={() => setActiveConvo(null)} className="sm:hidden text-muted">‹</button>
-                <div className="w-9 h-9 rounded-full bg-primary-soft text-primary flex items-center justify-center font-semibold overflow-hidden">
-                  {getOtherParticipant(activeConvo)?.fullName?.charAt(0).toUpperCase()}
+                <div className="w-9 h-9 rounded-full bg-primary-soft text-primary flex items-center justify-center font-semibold overflow-hidden shrink-0">
+                  {otherParticipant?.profilePicture ? (
+                    <img src={otherParticipant.profilePicture} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    otherParticipant?.fullName?.charAt(0).toUpperCase()
+                  )}
                 </div>
-                <div>
-                  <p className="font-semibold text-sm text-text">{getOtherParticipant(activeConvo)?.fullName}</p>
-                  {activeConvo.listing?.title && (
-                    <p className="text-xs text-muted">Re: {activeConvo.listing.title}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-sm text-text truncate">{otherParticipant?.fullName}</p>
+                  {activeConvo.listing?.title && listingLink ? (
+                    <Link to={listingLink} className="text-xs text-primary hover:underline">
+                      Re: {activeConvo.listing.title}
+                    </Link>
+                  ) : (
+                    <p className="text-xs text-muted">Community chat</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 bg-bg">
-                {messages.map((msg) => {
-                  const isMine = msg.sender._id === user._id;
-                  return (
-                    <div key={msg._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <div
-                        className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm ${
-                          isMine ? 'bg-primary text-white rounded-br-sm' : 'bg-white text-text border border-border rounded-bl-sm'
-                        }`}
-                      >
-                        {msg.text}
-                      </div>
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-1 bg-bg">
+                {messageGroups.map((group, gi) => (
+                  <div key={gi}>
+                    <div className="flex justify-center my-3">
+                      <span className="text-xs text-muted bg-white border border-border px-3 py-1 rounded-full">
+                        {formatDateLabel(group.date)}
+                      </span>
                     </div>
-                  );
-                })}
+                    {group.messages.map((msg) => {
+                      const isMine = msg.sender._id === user._id;
+                      return (
+                        <div key={msg._id} className={`flex items-end gap-2 mb-3 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          {!isMine && (
+                            <div className="w-7 h-7 rounded-full bg-primary-soft text-primary flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">
+                              {msg.sender.profilePicture ? (
+                                <img src={msg.sender.profilePicture} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                msg.sender.fullName?.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                          )}
+
+                          <div className={`flex flex-col max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
+                            <div
+                              className={`px-4 py-2 rounded-2xl text-sm ${
+                                isMine ? 'bg-primary text-white rounded-br-sm' : 'bg-white text-text border border-border rounded-bl-sm'
+                              }`}
+                            >
+                              {msg.text}
+                            </div>
+                            <div className={`flex items-center gap-1 mt-1 text-[11px] text-muted ${isMine ? 'justify-end' : 'justify-start'}`}>
+                              <span>{formatTime(msg.createdAt)}</span>
+                              {isMine && (
+                                msg.isRead ? (
+                                  <CheckCheck className="w-3.5 h-3.5 text-primary" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )
+                              )}
+                            </div>
+                          </div>
+
+                          {isMine && (
+                            <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">
+                              {user.profilePicture ? (
+                                <img src={user.profilePicture} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                user.fullName?.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {isOtherTyping && (
+                  <div className="flex items-end gap-2 mb-3 justify-start">
+                    <div className="w-7 h-7 rounded-full bg-primary-soft text-primary flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">
+                      {otherParticipant?.fullName?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="bg-white border border-border rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
 
               <form onSubmit={handleSend} className="flex items-center gap-2 p-3 border-t border-border bg-white">
+                <button type="button" className="text-muted hover:text-text transition shrink-0" title="Image sharing coming soon">
+                  <ImageIcon className="w-5 h-5" />
+                </button>
                 <input
                   type="text"
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={handleTextChange}
                   placeholder="Type a message..."
                   className="flex-1 px-4 py-2.5 rounded-full bg-bg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />

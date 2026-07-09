@@ -11,6 +11,7 @@ import SettingsPage from './pages/SettingsPage';
 import CreateListingPage from './pages/CreateListingPage';
 import MessagesPage from './pages/MessagesPage';
 import BookingPage from './pages/BookingPage';
+import SellerProfilePage from './pages/SellerProfilePage';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
       <Route path="/edit-listing/:id" element={<CreateListingPage />} />
       <Route path="/messages" element={<MessagesPage />} />
       <Route path="/book/:type/:id" element={<BookingPage />} />
+      <Route path="/seller/:id" element={<SellerProfilePage />} />
     </Routes>
   );
 }

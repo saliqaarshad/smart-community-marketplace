@@ -162,5 +162,22 @@ const updateProfile = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// @desc    Get a user's public profile (for seller/provider pages)
+// @route   GET /api/auth/users/:id
+const getUserPublicProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select(
+      'fullName profilePicture bio location skills averageRating totalReviews createdAt'
+    );
 
-module.exports = { registerUser, loginUser, getMe, forgotPassword, resetPassword, updateProfile };
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser, getMe, forgotPassword, resetPassword, updateProfile, getUserPublicProfile };
