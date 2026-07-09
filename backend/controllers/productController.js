@@ -56,7 +56,7 @@ const getProducts = async (req, res) => {
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    let sortOption = { createdAt: -1 }; // default: latest first
+    let sortOption = { createdAt: -1 };
     if (sort === 'price_asc') sortOption = { price: 1 };
     if (sort === 'price_desc') sortOption = { price: -1 };
 
@@ -123,7 +123,7 @@ const updateProduct = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this product' });
     }
 
-    const { title, description, price, category, stock, city, country } = req.body;
+    const { title, description, price, category, stock, city, country, keepImageIds } = req.body;
 
     if (title) product.title = title;
     if (description) product.description = description;
@@ -133,7 +133,19 @@ const updateProduct = async (req, res) => {
     if (city) product.location.city = city;
     if (country) product.location.country = country;
 
-    // If new images were uploaded, add them to the existing array
+    // Handle removal of existing images
+    if (keepImageIds) {
+      const keepIds = Array.isArray(keepImageIds) ? keepImageIds : JSON.parse(keepImageIds);
+      const imagesToRemove = product.images.filter((img) => !keepIds.includes(img._id.toString()));
+
+      for (const img of imagesToRemove) {
+        await cloudinary.uploader.destroy(img.publicId).catch(() => {});
+      }
+
+      product.images = product.images.filter((img) => keepIds.includes(img._id.toString()));
+    }
+
+    // Add newly uploaded images
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map((file) => ({
         url: file.path,
@@ -164,7 +176,6 @@ const deleteProduct = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this product' });
     }
 
-    // Remove images from Cloudinary
     for (const image of product.images) {
       await cloudinary.uploader.destroy(image.publicId).catch(() => {});
     }

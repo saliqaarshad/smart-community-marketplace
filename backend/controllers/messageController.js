@@ -35,10 +35,9 @@ const startConversation = async (req, res) => {
       });
     }
 
-    const populatedConversation = await Conversation.findById(conversation._id).populate(
-      'participants',
-      'fullName profilePicture'
-    );
+    const populatedConversation = await Conversation.findById(conversation._id)
+      .populate('participants', 'fullName profilePicture')
+      .populate('listing', 'title');
 
     res.status(201).json({ success: true, data: populatedConversation });
   } catch (error) {
@@ -52,9 +51,21 @@ const getMyConversations = async (req, res) => {
   try {
     const conversations = await Conversation.find({ participants: req.user._id })
       .populate('participants', 'fullName profilePicture')
+      .populate('listing', 'title')
       .sort({ lastMessageAt: -1 });
 
-    res.status(200).json({ success: true, data: conversations });
+    const withUnread = await Promise.all(
+      conversations.map(async (convo) => {
+        const unreadCount = await Message.countDocuments({
+          conversation: convo._id,
+          sender: { $ne: req.user._id },
+          isRead: false,
+        });
+        return { ...convo.toObject(), unreadCount };
+      })
+    );
+
+    res.status(200).json({ success: true, data: withUnread });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -82,7 +93,6 @@ const getMessages = async (req, res) => {
       .populate('sender', 'fullName profilePicture')
       .sort({ createdAt: 1 });
 
-    // Mark messages as read (all messages not sent by current user)
     await Message.updateMany(
       { conversation: req.params.id, sender: { $ne: req.user._id }, isRead: false },
       { isRead: true }

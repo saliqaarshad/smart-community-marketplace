@@ -128,7 +128,7 @@ const updateService = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this service' });
     }
 
-    const { title, description, category, price, deliveryTime, availability, city, country } = req.body;
+    const { title, description, category, price, deliveryTime, availability, city, country, keepImageIds } = req.body;
 
     if (title) service.title = title;
     if (description) service.description = description;
@@ -139,6 +139,19 @@ const updateService = async (req, res) => {
     if (city) service.location.city = city;
     if (country) service.location.country = country;
 
+    // Handle removal of existing images
+    if (keepImageIds) {
+      const keepIds = Array.isArray(keepImageIds) ? keepImageIds : JSON.parse(keepImageIds);
+      const imagesToRemove = service.portfolioImages.filter((img) => !keepIds.includes(img._id.toString()));
+
+      for (const img of imagesToRemove) {
+        await cloudinary.uploader.destroy(img.publicId).catch(() => {});
+      }
+
+      service.portfolioImages = service.portfolioImages.filter((img) => keepIds.includes(img._id.toString()));
+    }
+
+    // Add newly uploaded images
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map((file) => ({
         url: file.path,

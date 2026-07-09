@@ -94,15 +94,14 @@ const forgotPassword = async (req, res) => {
 
     const resetToken = crypto.randomBytes(20).toString('hex');
     user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 mins
+    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
 
     await user.save();
 
-    // In production, email this token. For now, return it directly (dev only).
     res.status(200).json({
       success: true,
       message: 'Password reset token generated',
-      resetToken, // NOTE: remove this in production, send via email instead
+      resetToken,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -138,4 +137,30 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getMe, forgotPassword, resetPassword };
+// @desc    Update logged-in user's profile
+// @route   PUT /api/auth/profile
+const updateProfile = async (req, res) => {
+  try {
+    const { fullName, bio, phone, city, country, skills } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (fullName) user.fullName = fullName;
+    if (bio !== undefined) user.bio = bio;
+    if (phone !== undefined) user.phone = phone;
+    if (city !== undefined) user.location.city = city;
+    if (country !== undefined) user.location.country = country;
+    if (skills) user.skills = Array.isArray(skills) ? skills : skills.split(',').map((s) => s.trim());
+
+    if (req.file) {
+      user.profilePicture = req.file.path;
+    }
+
+    await user.save();
+
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser, getMe, forgotPassword, resetPassword, updateProfile };
