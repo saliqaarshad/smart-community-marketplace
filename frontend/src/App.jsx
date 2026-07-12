@@ -17,6 +17,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import AdminPage from './pages/AdminPage';
+import HelpPage from './pages/HelpPage';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:resetToken" element={<ResetPasswordPage />} />
       <Route path="/admin" element={<AdminPage />} />
+      <Route path="/help" element={<HelpPage />} />
     </Routes>
   );
 }
