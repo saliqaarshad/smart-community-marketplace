@@ -251,7 +251,7 @@ const DashboardPage = () => {
                               <span className={`text-xs font-medium px-2 py-1 rounded ${item.isApproved ? 'bg-primary-soft text-primary' : 'bg-amber-50 text-amber-600'}`}>
                                 {item.isApproved ? 'Live' : 'Pending approval'}
                               </span>
-                              <Link to={`/edit-listing/${item._id}`} className="text-xs font-semibold text-primary hover:underline shrink-0">
+                              <Link to={`/edit-listing/${item._id}${item._type === 'service' ? '?type=service' : ''}`} className="text-xs font-semibold text-primary hover:underline shrink-0">
                                 Edit
                               </Link>
                             </div>

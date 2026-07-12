@@ -8,32 +8,71 @@ import api from '../utils/api';
 
 const categoryPills = ['All', 'Furniture', 'Electronics', 'Fashion', 'Graphic Designing', 'Tutoring', 'Home Services'];
 
+const productCategories = new Set(['Furniture', 'Electronics', 'Fashion', 'Home', 'Books', 'Sports']);
+const serviceCategories = new Set([
+  'Graphic Designing',
+  'Web Development',
+  'Photography',
+  'Home Services',
+  'Tutoring',
+  'Content Writing',
+  'Digital Marketing',
+  'Video Editing',
+]);
+
 const HomePage = () => {
   const [searchParams] = useSearchParams();
-  const [products, setProducts] = useState([]);
+  const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePill, setActivePill] = useState('All');
 
   const keyword = searchParams.get('keyword') || '';
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchListings = async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (keyword) params.append('keyword', keyword);
-        if (activePill !== 'All') params.append('category', activePill);
-        params.append('limit', 8);
+        const isProductCategory = productCategories.has(activePill);
+        const isServiceCategory = serviceCategories.has(activePill);
 
-        const res = await api.get(`/products?${params.toString()}`);
-        setProducts(res.data.data);
+        const buildParams = (extra = {}) => {
+          const p = new URLSearchParams();
+          if (keyword) p.append('keyword', keyword);
+          Object.entries(extra).forEach(([k, v]) => p.append(k, v));
+          return p.toString();
+        };
+
+        let products = [];
+        let services = [];
+
+        if (activePill === 'All') {
+          const [prodRes, servRes] = await Promise.all([
+            api.get(`/products?${buildParams({ limit: 12 })}`),
+            api.get(`/services?${buildParams({ limit: 12 })}`),
+          ]);
+          products = prodRes.data.data;
+          services = servRes.data.data;
+        } else if (isProductCategory) {
+          const res = await api.get(`/products?${buildParams({ category: activePill, limit: 24 })}`);
+          products = res.data.data;
+        } else if (isServiceCategory) {
+          const res = await api.get(`/services?${buildParams({ category: activePill, limit: 24 })}`);
+          services = res.data.data;
+        }
+
+        const combined = [
+          ...products.map((p) => ({ ...p, _type: 'Product' })),
+          ...services.map((s) => ({ ...s, _type: 'Service' })),
+        ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        setListings(combined);
       } catch (error) {
-        console.error('Failed to fetch products:', error);
+        console.error('Failed to fetch listings:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchProducts();
+    fetchListings();
   }, [keyword, activePill]);
 
   return (
@@ -79,19 +118,19 @@ const HomePage = () => {
 
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {[...Array(4)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <div key={i} className="aspect-[4/3] rounded-xl bg-border animate-pulse" />
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : listings.length === 0 ? (
             <div className="text-center py-20 text-muted">
-              No listings found. Be the first to post one!
+              No listings found in this category yet.
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-6 sm:gap-y-8">
-              {products.map((product, i) => (
-                <div key={product._id} className="animate-fade-in-up" style={{ animationDelay: `${i * 60}ms` }}>
-                  <ListingCard listing={product} type="Product" />
+              {listings.map((listing, i) => (
+                <div key={listing._id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
+                  <ListingCard listing={listing} type={listing._type} />
                 </div>
               ))}
             </div>

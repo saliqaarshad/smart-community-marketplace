@@ -111,7 +111,7 @@ const ServiceDetailPage = () => {
 
           {isOwner && (
             <Link
-              to={`/edit-listing/${service._id}`}
+              to={`/edit-listing/${service._id}?type=service`}
               className="flex items-center gap-1.5 text-sm font-semibold text-primary border border-primary px-4 py-2 rounded-lg hover:bg-primary-soft transition-all duration-200 hover:scale-[1.02] active:scale-95"
             >
               <Pencil className="w-3.5 h-3.5" />

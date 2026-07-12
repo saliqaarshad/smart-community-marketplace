@@ -48,6 +48,7 @@ const CreateListingPage = () => {
   const [existingImages, setExistingImages] = useState([]);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -157,6 +158,24 @@ const CreateListingPage = () => {
       toast.error(error.response?.data?.message || 'Failed to save listing');
     } finally {
       setSaving(false);
+    }
+  };
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this listing? This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const basePath = listingType === 'product' ? '/products' : '/services';
+      await api.delete(`${basePath}/${id}`);
+      toast.success('Listing deleted');
+      navigate('/dashboard');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete listing');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -448,6 +467,16 @@ const CreateListingPage = () => {
               Listing will be visible to your community immediately after publishing.
             </p>
             <div className="flex items-center gap-4">
+              {isEdit && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-sm font-semibold text-red-600 hover:text-red-700 transition disabled:opacity-60"
+                >
+                  {deleting ? 'Deleting...' : 'Delete listing'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => navigate(-1)}
