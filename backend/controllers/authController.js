@@ -164,8 +164,14 @@ const updateProfile = async (req, res) => {
 };
 // @desc    Get a user's public profile (for seller/provider pages)
 // @route   GET /api/auth/users/:id
+// @desc    Get a user's public profile (for seller/provider pages)
+// @route   GET /api/auth/users/:id
 const getUserPublicProfile = async (req, res) => {
   try {
+    const Product = require('../models/Product');
+    const Service = require('../models/Service');
+    const Booking = require('../models/Booking');
+
     const user = await User.findById(req.params.id).select(
       'fullName profilePicture bio location skills averageRating totalReviews createdAt'
     );
@@ -174,7 +180,22 @@ const getUserPublicProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    res.status(200).json({ success: true, data: user });
+    const [products, services, completedOrders] = await Promise.all([
+      Product.find({ seller: req.params.id, isActive: true, isApproved: true }).sort({ createdAt: -1 }),
+      Service.find({ provider: req.params.id, isActive: true, isApproved: true }).sort({ createdAt: -1 }),
+      Booking.countDocuments({ seller: req.params.id, status: 'completed' }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...user.toObject(),
+        products,
+        services,
+        activeListingsCount: products.length + services.length,
+        completedOrders,
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
