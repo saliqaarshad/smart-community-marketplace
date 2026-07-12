@@ -12,6 +12,11 @@ import CreateListingPage from './pages/CreateListingPage';
 import MessagesPage from './pages/MessagesPage';
 import BookingPage from './pages/BookingPage';
 import SellerProfilePage from './pages/SellerProfilePage';
+import NotificationsPage from './pages/NotificationsPage';
+import FavoritesPage from './pages/FavoritesPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import AdminPage from './pages/AdminPage';
 
 function App() {
   return (
@@ -31,6 +36,11 @@ function App() {
       <Route path="/messages" element={<MessagesPage />} />
       <Route path="/book/:type/:id" element={<BookingPage />} />
       <Route path="/seller/:id" element={<SellerProfilePage />} />
+      <Route path="/notifications" element={<NotificationsPage />} />
+      <Route path="/favorites" element={<FavoritesPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password/:resetToken" element={<ResetPasswordPage />} />
+      <Route path="/admin" element={<AdminPage />} />
     </Routes>
   );
 }

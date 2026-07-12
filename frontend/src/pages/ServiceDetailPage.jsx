@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Star, MapPin, Heart, Eye, Clock } from 'lucide-react';
+import { Star, MapPin, Heart, Eye, Clock, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -100,12 +100,24 @@ const ServiceDetailPage = () => {
       <Navbar />
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1 w-full">
-        <div className="text-sm text-muted mb-6 flex items-center gap-2">
-          <Link to="/" className="hover:text-primary">Home</Link>
-          <span>/</span>
-          <Link to={`/services?category=${service.category}`} className="hover:text-primary">{service.category}</Link>
-          <span>/</span>
-          <span className="text-text">{service.title}</span>
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+          <div className="text-sm text-muted flex items-center gap-2">
+            <Link to="/" className="hover:text-primary">Home</Link>
+            <span>/</span>
+            <Link to={`/services?category=${service.category}`} className="hover:text-primary">{service.category}</Link>
+            <span>/</span>
+            <span className="text-text">{service.title}</span>
+          </div>
+
+          {isOwner && (
+            <Link
+              to={`/edit-listing/${service._id}`}
+              className="flex items-center gap-1.5 text-sm font-semibold text-primary border border-primary px-4 py-2 rounded-lg hover:bg-primary-soft transition-all duration-200 hover:scale-[1.02] active:scale-95"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit listing
+            </Link>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -199,6 +211,16 @@ const ServiceDetailPage = () => {
               </div>
               <span className="text-sm font-semibold text-primary">View profile</span>
             </Link>
+
+            {isOwner && (
+              <Link
+                to={`/edit-listing/${service._id}`}
+                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-light text-white font-semibold py-3 rounded-xl transition-all duration-200 hover:scale-[1.01] active:scale-95 mb-2.5"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit listing
+              </Link>
+            )}
 
             {!isOwner && (
               <div className="flex flex-col gap-2.5">

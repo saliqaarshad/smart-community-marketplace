@@ -5,7 +5,19 @@ const cloudinary = require('../config/cloudinary');
 // @route   POST /api/services
 const createService = async (req, res) => {
   try {
-    const { title, description, category, price, deliveryTime, availability, city, country } = req.body;
+    const {
+      title,
+      description,
+      category,
+      price,
+      deliveryTime,
+      availability,
+      city,
+      country,
+      availableDays,
+      locationType,
+      priceUnit,
+    } = req.body;
 
     if (!title || !description || !category || !price || !deliveryTime) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
@@ -24,6 +36,9 @@ const createService = async (req, res) => {
       price,
       deliveryTime,
       availability: availability || 'Available',
+      availableDays: availableDays ? JSON.parse(availableDays) : [],
+      locationType: locationType || 'Remote',
+      priceUnit: priceUnit || 'project',
       portfolioImages,
       location: { city: city || '', country: country || '' },
     });
@@ -128,7 +143,20 @@ const updateService = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this service' });
     }
 
-    const { title, description, category, price, deliveryTime, availability, city, country, keepImageIds } = req.body;
+    const {
+      title,
+      description,
+      category,
+      price,
+      deliveryTime,
+      availability,
+      city,
+      country,
+      keepImageIds,
+      availableDays,
+      locationType,
+      priceUnit,
+    } = req.body;
 
     if (title) service.title = title;
     if (description) service.description = description;
@@ -136,10 +164,12 @@ const updateService = async (req, res) => {
     if (price) service.price = price;
     if (deliveryTime) service.deliveryTime = deliveryTime;
     if (availability) service.availability = availability;
+    if (availableDays) service.availableDays = JSON.parse(availableDays);
+    if (locationType) service.locationType = locationType;
+    if (priceUnit) service.priceUnit = priceUnit;
     if (city) service.location.city = city;
     if (country) service.location.country = country;
 
-    // Handle removal of existing images
     if (keepImageIds) {
       const keepIds = Array.isArray(keepImageIds) ? keepImageIds : JSON.parse(keepImageIds);
       const imagesToRemove = service.portfolioImages.filter((img) => !keepIds.includes(img._id.toString()));
@@ -151,7 +181,6 @@ const updateService = async (req, res) => {
       service.portfolioImages = service.portfolioImages.filter((img) => keepIds.includes(img._id.toString()));
     }
 
-    // Add newly uploaded images
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map((file) => ({
         url: file.path,

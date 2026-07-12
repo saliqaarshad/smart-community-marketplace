@@ -80,22 +80,26 @@ const Navbar = () => {
             <Search className="w-5 h-5" />
           </button>
 
-          <Link
-            to="/notifications"
-            className={`hidden sm:block transition-colors duration-150 ${
-              isActive('/notifications') ? 'text-primary' : 'text-muted hover:text-text'
-            }`}
-          >
-            <Bell className="w-5 h-5" />
-          </Link>
+          {user && (
+            <Link
+              to="/notifications"
+              className={`hidden sm:block transition-colors duration-150 ${
+                isActive('/notifications') ? 'text-primary' : 'text-muted hover:text-text'
+              }`}
+            >
+              <Bell className="w-5 h-5" />
+            </Link>
+          )}
 
-          <Link
-            to={user ? '/create-listing' : '/login'}
-            className="hidden sm:flex items-center gap-1.5 bg-primary hover:bg-primary-light text-white font-semibold px-3 sm:px-4 py-2 rounded-lg text-sm transition-all duration-150 hover:scale-[1.03] active:scale-95"
-          >
-            <span className="hidden lg:inline">Post a listing</span>
-            <Plus className="w-4 h-4 lg:hidden" />
-          </Link>
+          {user && (
+            <Link
+              to="/create-listing"
+              className="hidden sm:flex items-center gap-1.5 bg-primary hover:bg-primary-light text-white font-semibold px-3 sm:px-4 py-2 rounded-lg text-sm transition-all duration-150 hover:scale-[1.03] active:scale-95"
+            >
+              <span className="hidden lg:inline">Post a listing</span>
+              <Plus className="w-4 h-4 lg:hidden" />
+            </Link>
+          )}
 
           {user ? (
             <div className="relative">
@@ -126,6 +130,20 @@ const Navbar = () => {
                       Dashboard
                     </Link>
                     <Link
+                      to={`/seller/${user._id}`}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-text hover:bg-bg transition"
+                    >
+                      View Profile
+                    </Link>
+                    <Link
+                      to="/favorites"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-text hover:bg-bg transition"
+                    >
+                      Favorites
+                    </Link>
+                    <Link
                       to="/settings"
                       onClick={() => setUserMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-text hover:bg-bg transition"
@@ -152,12 +170,20 @@ const Navbar = () => {
               )}
             </div>
           ) : (
-            <Link
-              to="/login"
-              className="hidden sm:flex w-9 h-9 rounded-full bg-primary-soft text-primary items-center justify-center font-semibold transition-transform duration-150 hover:scale-105"
-            >
-              <Plus className="w-4 h-4" />
-            </Link>
+            <div className="hidden sm:flex items-center gap-2">
+              <Link
+                to="/login"
+                className="text-sm font-semibold text-text hover:text-primary transition px-3 py-2"
+              >
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                className="bg-primary hover:bg-primary-light text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all duration-150 hover:scale-[1.03] active:scale-95"
+              >
+                Sign up
+              </Link>
+            </div>
           )}
 
           <button
@@ -201,15 +227,18 @@ const Navbar = () => {
               {link.label}
             </Link>
           ))}
-          <Link
-            to="/notifications"
-            onClick={() => setMobileOpen(false)}
-            className={`px-2 py-2.5 rounded-lg text-sm font-medium transition ${
-              isActive('/notifications') ? 'text-primary bg-primary-soft' : 'text-text hover:bg-bg'
-            }`}
-          >
-            Notifications
-          </Link>
+
+          {user && (
+            <Link
+              to="/notifications"
+              onClick={() => setMobileOpen(false)}
+              className={`px-2 py-2.5 rounded-lg text-sm font-medium transition ${
+                isActive('/notifications') ? 'text-primary bg-primary-soft' : 'text-text hover:bg-bg'
+              }`}
+            >
+              Notifications
+            </Link>
+          )}
 
           {user ? (
             <>
@@ -219,6 +248,20 @@ const Navbar = () => {
                 className="px-2 py-2.5 rounded-lg text-sm font-medium text-text hover:bg-bg transition"
               >
                 Dashboard
+              </Link>
+              <Link
+                to={`/seller/${user._id}`}
+                onClick={() => setMobileOpen(false)}
+                className="px-2 py-2.5 rounded-lg text-sm font-medium text-text hover:bg-bg transition"
+              >
+                View Profile
+              </Link>
+              <Link
+                to="/favorites"
+                onClick={() => setMobileOpen(false)}
+                className="px-2 py-2.5 rounded-lg text-sm font-medium text-text hover:bg-bg transition"
+              >
+                Favorites
               </Link>
               <Link
                 to="/settings"
@@ -242,20 +285,32 @@ const Navbar = () => {
               >
                 Log out
               </button>
+              <Link
+                to="/create-listing"
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 bg-primary text-white font-semibold px-4 py-2.5 rounded-lg text-sm text-center hover:bg-primary-light transition"
+              >
+                Post a listing
+              </Link>
             </>
           ) : (
-            <Link to="/login" onClick={() => setMobileOpen(false)} className="px-2 py-2.5 rounded-lg text-sm font-medium text-text hover:bg-bg transition">
-              Log in
-            </Link>
+            <>
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                className="px-2 py-2.5 rounded-lg text-sm font-medium text-text hover:bg-bg transition"
+              >
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 bg-primary text-white font-semibold px-4 py-2.5 rounded-lg text-sm text-center hover:bg-primary-light transition"
+              >
+                Sign up
+              </Link>
+            </>
           )}
-
-          <Link
-            to={user ? '/create-listing' : '/login'}
-            onClick={() => setMobileOpen(false)}
-            className="mt-2 bg-primary text-white font-semibold px-4 py-2.5 rounded-lg text-sm text-center hover:bg-primary-light transition"
-          >
-            Post a listing
-          </Link>
         </div>
       )}
     </nav>

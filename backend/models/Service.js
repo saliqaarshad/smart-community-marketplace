@@ -39,13 +39,28 @@ const serviceSchema = new mongoose.Schema(
       min: 0,
     },
     deliveryTime: {
-      type: String, // e.g. "3 days", "1 week"
+      type: String,
       required: [true, 'Estimated delivery time is required'],
     },
     availability: {
       type: String,
       enum: ['Available', 'Busy', 'Unavailable'],
       default: 'Available',
+    },
+    availableDays: {
+      type: [String],
+      enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      default: [],
+    },
+    locationType: {
+      type: String,
+      enum: ['At my location', "At client's location", 'Remote'],
+      default: 'Remote',
+    },
+    priceUnit: {
+      type: String,
+      enum: ['project', 'hour', 'session', 'day'],
+      default: 'project',
     },
     portfolioImages: [
       {
@@ -85,7 +100,6 @@ const serviceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Text index for keyword search
 serviceSchema.index({ title: 'text', description: 'text', category: 'text' });
 
 module.exports = mongoose.model('Service', serviceSchema);
