@@ -22,6 +22,11 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
+].filter(Boolean);
+
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -30,11 +35,6 @@ const io = new Server(server, {
 });
 
 initializeSocket(io);
-
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'http://localhost:5173',
-];
 
 app.use(cors({
   origin: function (origin, callback) {
